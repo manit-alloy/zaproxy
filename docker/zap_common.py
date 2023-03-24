@@ -47,8 +47,10 @@ except ImportError:
 class ScanNotStartedException(Exception):
     pass
 
+
 class UserInputException(Exception):
     pass
+
 
 OLD_ZAP_CLIENT_WARNING = '''A newer version of python_owasp_zap_v2.4
  is available. Please run \'pip install -U python_owasp_zap_v2.4\' to update to
@@ -61,15 +63,18 @@ context_name = None
 context_users = None
 scan_user = None
 
+
 def load_custom_hooks(hooks_file=None):
     """ Loads a custom python module which modifies zap scripts behaviour
     hooks_file - a python file which defines custom hooks
     """
 
-    provided_hooks = True if hooks_file or os.environ.get('ZAP_HOOKS') else False
+    provided_hooks = True if hooks_file or os.environ.get(
+        'ZAP_HOOKS') else False
 
     global zap_hooks
-    hooks_file = hooks_file if hooks_file else os.environ.get('ZAP_HOOKS', '~/.zap_hooks.py')
+    hooks_file = hooks_file if hooks_file else os.environ.get(
+        'ZAP_HOOKS', '~/.zap_hooks.py')
     hooks_file = os.path.expanduser(hooks_file)
 
     if not os.path.exists(hooks_file):
@@ -77,10 +82,11 @@ def load_custom_hooks(hooks_file=None):
         hooks_file2 = os.path.expanduser('wrk/' + hooks_file)
         if os.path.exists(hooks_file2):
             hooks_file = hooks_file2
-        
+
     if not os.path.exists(hooks_file):
         if provided_hooks:
-            logging.warning('Could not find custom hooks file at %s ' % os.path.abspath(hooks_file))
+            logging.warning('Could not find custom hooks file at %s ' %
+                            os.path.abspath(hooks_file))
         return
 
     loader = SourceFileLoader("zap_hooks", hooks_file)
@@ -97,9 +103,11 @@ def hook(hook_name=None, **kwargs):
     hook_name - name of hook for interactions, if None will use the name of the method it wrapped
     """
     after_hook = kwargs.get('wrap', False)
+
     def _decorator(func):
         name = func.__name__
         _hook_name = hook_name if hook_name else name
+
         def _wrap(*args, **kwargs):
             hook_args = list(args)
             hook_kwargs = dict(kwargs)
@@ -121,7 +129,7 @@ def trigger_hook(name, *args, **kwargs):
     args_list = list(args)
     args = args[0] if arg_length == 1 else args
 
-    logging.debug('Trigger hook: %s, args: %s' %  (name, arg_length))
+    logging.debug('Trigger hook: %s, args: %s' % (name, arg_length))
 
     if not zap_hooks:
         return args
@@ -138,7 +146,7 @@ def trigger_hook(name, *args, **kwargs):
     if not response:
         return args
     elif arg_length == 1:
-      return args
+        return args
     elif (isinstance(response, list) or isinstance(response, tuple)) and len(response) != arg_length:
         return args
     return response
@@ -160,7 +168,8 @@ def load_config(config, config_dict, config_msg, out_of_scope_dict):
                         out_of_scope_dict[plugin_id] = []
                     out_of_scope_dict[plugin_id].append(re.compile(optional))
             elif val not in zap_conf_lvls:
-                raise ValueError("Level {0} is not a supported level: {1}".format(val, zap_conf_lvls))
+                raise ValueError(
+                    "Level {0} is not a supported level: {1}".format(val, zap_conf_lvls))
             else:
                 config_dict[key] = val
                 if '\t' in optional:
@@ -175,36 +184,39 @@ def is_in_scope(plugin_id, url, out_of_scope_dict):
     """ Returns True if the url is in scope for the specified plugin_id """
     if '*' in out_of_scope_dict:
         for oos_prog in out_of_scope_dict['*']:
-            #print('OOS Compare ' + oos_url + ' vs ' + 'url)
+            # print('OOS Compare ' + oos_url + ' vs ' + 'url)
             if oos_prog.match(url):
-                #print('OOS Ignoring ' + str(plugin_id) + ' ' + url)
+                # print('OOS Ignoring ' + str(plugin_id) + ' ' + url)
                 return False
-        #print 'Not in * dict'
+        # print 'Not in * dict'
     if plugin_id in out_of_scope_dict:
         for oos_prog in out_of_scope_dict[plugin_id]:
-            #print('OOS Compare ' + oos_url + ' vs ' + 'url)
+            # print('OOS Compare ' + oos_url + ' vs ' + 'url)
             if oos_prog.match(url):
-                #print('OOS Ignoring ' + str(plugin_id) + ' ' + url)
+                # print('OOS Ignoring ' + str(plugin_id) + ' ' + url)
                 return False
-    #print 'Not in ' + plugin_id + ' dict'
+    # print 'Not in ' + plugin_id + ' dict'
     return True
 
 
 def print_rule(zap, action, alert_list, detailed_output, user_msg, in_progress_issues):
     id = alert_list[0].get('pluginId')
     if id in in_progress_issues:
-        print (action + '-IN_PROGRESS: ' + alert_list[0].get('alert') + ' [' + id + '] x ' + str(len(alert_list)) + ' ' + user_msg)
+        print(action + '-IN_PROGRESS: ' + alert_list[0].get(
+            'alert') + ' [' + id + '] x ' + str(len(alert_list)) + ' ' + user_msg)
         if in_progress_issues[id]["link"]:
-            print ('\tProgress link: ' + in_progress_issues[id]["link"])
+            print('\tProgress link: ' + in_progress_issues[id]["link"])
     else:
-        print (action + '-NEW: ' + alert_list[0].get('alert') + ' [' + id + '] x ' + str(len(alert_list)) + ' ' + user_msg)
+        print(action + '-NEW: ' + alert_list[0].get('alert') +
+              ' [' + id + '] x ' + str(len(alert_list)) + ' ' + user_msg)
     if detailed_output:
         # Show (up to) first 5 urls, along with the response code (which we have to perform another request for)
         for alert in alert_list[0:5]:
             msg = zap.core.message(alert.get('messageId'))
             respHeader = msg['responseHeader']
-            code = respHeader[respHeader.index(' ') + 1 : respHeader.index('\r\n')]
-            print ('\t' + alert.get('url') + ' (' + code + ')')
+            code = respHeader[respHeader.index(
+                ' ') + 1: respHeader.index('\r\n')]
+            print('\t' + alert.get('url') + ' (' + code + ')')
 
 
 def print_rules(zap, alert_dict, level, config_dict, config_msg, min_level, inc_rule, inc_extra, detailed_output, in_progress_issues):
@@ -216,7 +228,8 @@ def print_rules(zap, alert_dict, level, config_dict, config_msg, min_level, inc_
             if key in config_msg:
                 user_msg = config_msg[key]
             if min_level <= zap_conf_lvls.index(level):
-                print_rule(zap, level, alert_list, detailed_output, user_msg, in_progress_issues)
+                print_rule(zap, level, alert_list, detailed_output,
+                           user_msg, in_progress_issues)
             if key in in_progress_issues:
                 inprog_count += 1
             else:
@@ -257,9 +270,9 @@ def dump_log_file(cid):
 
 
 def cp_to_docker(cid, file, dir):
-    logging.debug ('Copy ' + file)
+    logging.debug('Copy ' + file)
     params = ['docker', 'cp', file, cid + ':' + dir + file]
-    logging.debug (subprocess.check_output(params))
+    logging.debug(subprocess.check_output(params))
 
 
 def running_in_docker():
@@ -285,12 +298,13 @@ def create_start_options(mode, port, extra_params):
     logging.debug('Params: ' + str(params))
     return params
 
+
 @hook()
 def start_zap(port, extra_zap_params):
     logging.debug('Starting ZAP')
     with open('zap.out', "w") as outfile:
         subprocess.Popen(
-            create_start_options('-daemon', port, extra_zap_params), 
+            create_start_options('-daemon', port, extra_zap_params),
             stdout=outfile, stderr=subprocess.DEVNULL)
 
 
@@ -298,11 +312,11 @@ def run_zap_inline(port, extra_zap_params):
     logging.debug('Starting ZAP')
     process = subprocess.run(
         create_start_options('-cmd', port, extra_zap_params),
-        universal_newlines = True, stdout = subprocess.PIPE, stderr=subprocess.DEVNULL)
+        universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     return process.stdout
 
 
-def wait_for_zap_start(zap, timeout_in_secs = 600):
+def wait_for_zap_start(zap, timeout_in_secs=600):
     version = None
     if not timeout_in_secs:
         # if ZAP doesn't start in 10 mins then its probably not going to start
@@ -319,8 +333,8 @@ def wait_for_zap_start(zap, timeout_in_secs = 600):
 
     if not version:
         raise IOError(
-          errno.EIO,
-          'Failed to connect to ZAP after {0} seconds'.format(timeout_in_secs))
+            errno.EIO,
+            'Failed to connect to ZAP after {0} seconds'.format(timeout_in_secs))
 
 
 @hook(wrap=True)
@@ -339,16 +353,16 @@ def start_docker_zap(docker_image, port, extra_zap_params, mount_dir):
         params.extend(['-v', mount_dir + ':/zap/wrk/:rw'])
 
     params.extend([
-            '-u', 'zap',
-            '-p', str(port) + ':' + str(port),
-            '-d', docker_image,
-            'zap-x.sh', '-daemon',
-            '-port', str(port),
-            '-host', '0.0.0.0',
-            '-config', 'database.recoverylog=false',
-            '-config', 'api.disablekey=true',
-            '-config', 'api.addrs.addr.name=.*',
-            '-config', 'api.addrs.addr.regex=true'])
+        '-u', 'zap',
+        '-p', str(port) + ':' + str(port),
+        '-d', docker_image,
+        'zap-x.sh', '-daemon',
+        '-port', str(port),
+        '-host', '0.0.0.0',
+        '-config', 'database.recoverylog=false',
+        '-config', 'api.disablekey=true',
+        '-config', 'api.addrs.addr.name=.*',
+        '-config', 'api.addrs.addr.regex=true'])
 
     params.extend(extra_zap_params)
 
@@ -368,8 +382,9 @@ def get_free_port():
 
 
 def ipaddress_for_cid(cid):
-    insp_output = subprocess.check_output(['docker', 'inspect', cid]).strip().decode('utf-8')
-    #logging.debug('Docker Inspect: ' + insp_output)
+    insp_output = subprocess.check_output(
+        ['docker', 'inspect', cid]).strip().decode('utf-8')
+    # logging.debug('Docker Inspect: ' + insp_output)
     insp_json = json.loads(insp_output)
     return str(insp_json[0]['NetworkSettings']['IPAddress'])
 
@@ -408,7 +423,8 @@ def zap_tune(zap):
 
 
 def raise_scan_not_started():
-    raise ScanNotStartedException('Failed to start the scan, check the log/output for more details.')
+    raise ScanNotStartedException(
+        'Failed to start the scan, check the log/output for more details.')
 
 
 @hook(wrap=True)
@@ -425,9 +441,37 @@ def zap_spider(zap, target):
     time.sleep(5)
 
     while (int(zap.spider.status(spider_scan_id)) < 100):
-        logging.debug('Spider progress %: ' + zap.spider.status(spider_scan_id))
+        logging.debug('Spider progress %: ' +
+                      zap.spider.status(spider_scan_id))
         time.sleep(5)
     logging.debug('Spider complete')
+
+
+@hook(wrap=True)
+def zap_accesscontrol_scan(zap, report_filename):
+    if scan_user:
+        logging.debug('Access Control Scan as user %s', scan_user['name'])
+        ac_scan_id = zap.accessControl.scan(context_id, scan_user['id'])
+    else:
+        logging.debug('Access Control Scan starting on %s for all users')
+        for usr in context_users:
+            logging.debug('Starting scan for user ' + usr['name'])
+            ac_scan_id = zap.accessControl.scan(
+                context_id, usr['id'])
+            if not str(ac_scan_id).isdigit():
+                raise_scan_not_started()
+            time.sleep(5)
+            while (int(zap.spider.status(ac_scan_id)) < 100):
+                logging.debug('AC scan progress for user %s %d %: ',
+                              usr['name'], zap.accessControl.get_scan_progress(ac_scan_id))
+                time.sleep(5)
+    logging.debug('Access Control Scan complete')
+
+    logging.debug(
+        'Writing HTML report for access control scan to %s', report_filename)
+    zap.accessControl.write_htm_lreport(context_id, report_filename)
+    logging.debug('HTML report written to %s', report_filename)
+    logging.debug('Access Control Scan complete!')
 
 
 @hook(wrap=True)
@@ -436,7 +480,8 @@ def zap_ajax_spider(zap, target, max_time):
         zap.ajaxSpider.set_option_max_duration(str(max_time))
     if scan_user:
         logging.debug('AjaxSpider %s as user %s', target, scan_user['name'])
-        result = zap.ajaxSpider.scan_as_user(context_name, scan_user['name'], target)
+        result = zap.ajaxSpider.scan_as_user(
+            context_name, scan_user['name'], target)
     else:
         logging.debug('AjaxSpider %s', target)
         result = zap.ajaxSpider.scan(target, contextname=context_name)
@@ -445,7 +490,8 @@ def zap_ajax_spider(zap, target, max_time):
     time.sleep(5)
 
     while (zap.ajaxSpider.status == 'running'):
-        logging.debug('Ajax Spider running, found urls: %s', zap.ajaxSpider.number_of_results)
+        logging.debug('Ajax Spider running, found urls: %s',
+                      zap.ajaxSpider.number_of_results)
         time.sleep(5)
     logging.debug('Ajax Spider complete')
 
@@ -453,23 +499,27 @@ def zap_ajax_spider(zap, target, max_time):
 @hook(wrap=True)
 def zap_active_scan(zap, target, policy):
     if scan_user:
-        logging.debug('Active Scan %s with policy %s as user %s', target, policy, scan_user['name'])
-        ascan_scan_id = zap.ascan.scan_as_user(target, recurse=True, scanpolicyname=policy, contextid=context_id, userid=scan_user['id'])
+        logging.debug('Active Scan %s with policy %s as user %s',
+                      target, policy, scan_user['name'])
+        ascan_scan_id = zap.ascan.scan_as_user(
+            target, recurse=True, scanpolicyname=policy, contextid=context_id, userid=scan_user['id'])
     else:
         logging.debug('Active Scan %s with policy %s', target, policy)
-        ascan_scan_id = zap.ascan.scan(target, recurse=True, scanpolicyname=policy, contextid=context_id)
+        ascan_scan_id = zap.ascan.scan(
+            target, recurse=True, scanpolicyname=policy, contextid=context_id)
     if not str(ascan_scan_id).isdigit():
         raise_scan_not_started()
     time.sleep(5)
 
-    while(int(zap.ascan.status(ascan_scan_id)) < 100):
-        logging.debug('Active Scan progress %: ' + zap.ascan.status(ascan_scan_id))
+    while (int(zap.ascan.status(ascan_scan_id)) < 100):
+        logging.debug('Active Scan progress %: ' +
+                      zap.ascan.status(ascan_scan_id))
         time.sleep(5)
     logging.debug('Active Scan complete')
     logging.debug(zap.ascan.scan_progress(ascan_scan_id))
 
 
-def zap_wait_for_passive_scan(zap, timeout_in_secs = 0):
+def zap_wait_for_passive_scan(zap, timeout_in_secs=0):
     rtc = zap.pscan.records_to_scan
     logging.debug('Records to scan...')
     time_taken = 0
@@ -482,9 +532,9 @@ def zap_wait_for_passive_scan(zap, timeout_in_secs = 0):
             timed_out = True
             break
     if timed_out:
-      logging.debug('Exceeded passive scan timeout')
+        logging.debug('Exceeded passive scan timeout')
     else:
-      logging.debug('Passive scanning complete')
+        logging.debug('Passive scanning complete')
 
 
 @hook(wrap=True)
@@ -520,9 +570,11 @@ def get_latest_zap_client_version():
     version_info = None
 
     try:
-        version_info = urlopen('https://pypi.python.org/pypi/python-owasp-zap-v2.4/json', timeout=10)
+        version_info = urlopen(
+            'https://pypi.python.org/pypi/python-owasp-zap-v2.4/json', timeout=10)
     except Exception as e:
-        logging.warning('Error fetching latest ZAP Python API client version: %s' % e)
+        logging.warning(
+            'Error fetching latest ZAP Python API client version: %s' % e)
         return None
 
     version_json = json.loads(version_info.read().decode('utf-8'))
@@ -543,7 +595,8 @@ def check_zap_client_version():
         return
 
     if 'pkg_resources' not in globals():  # import failed
-        logging.warning('Could not check ZAP Python API client without pkg_resources.')
+        logging.warning(
+            'Could not check ZAP Python API client without pkg_resources.')
         return
 
     current_version = getattr(zapv2, '__version__', None)
@@ -567,6 +620,7 @@ def write_report(file_path, report):
 
         f.write(report)
 
+
 @hook(wrap=True)
 def zap_import_context(zap, context_file):
     global context_id
@@ -577,11 +631,13 @@ def zap_import_context(zap, context_file):
         int(res)
         context_name = zap.context.context_list[-1]
         context_users = zap.users.users_list(context_id)
-        
+
     except ValueError:
         context_id = None
-        logging.error('Failed to load context file ' + context_file + ' : ' + res)
+        logging.error('Failed to load context file ' +
+                      context_file + ' : ' + res)
     return context_id
+
 
 @hook(wrap=True)
 def zap_set_scan_user(zap, username):
@@ -593,25 +649,27 @@ def zap_set_scan_user(zap, username):
             return
     raise UserInputException('ZAP failed to find user: {0}'.format(username))
 
+
 def get_af_env(targets, out_of_scope_dict, debug):
     exclude = []
     # '*' rules apply to all scan rules so can just be added to the context exclusions
     if '*' in out_of_scope_dict:
         for rule in out_of_scope_dict['*']:
             exclude.append(rule.pattern)
-    
+
     return {
-            'env': {
-                'contexts': [{
-                    'name': 'baseline',
-                    'urls': targets,
-                    'excludePaths': exclude
-                    }],
-                'parameters': {
-                    'failOnError': True,
-                    'progressToStdout': debug}
-                }
+        'env': {
+            'contexts': [{
+                'name': 'baseline',
+                'urls': targets,
+                'excludePaths': exclude
+            }],
+            'parameters': {
+                'failOnError': True,
+                'progressToStdout': debug}
         }
+    }
+
 
 def get_af_pscan_config(max_alerts=10):
     return {
@@ -619,14 +677,16 @@ def get_af_pscan_config(max_alerts=10):
         'parameters': {
             'enableTags': False,
             'maxAlertsPerRule': max_alerts}
-        }
+    }
+
 
 def get_af_pscan_wait(mins):
     return {
         'type': 'passiveScan-wait',
         'parameters': {
             'maxDuration': mins}
-        }
+    }
+
 
 def get_af_spider(target, mins):
     return {
@@ -634,7 +694,8 @@ def get_af_spider(target, mins):
         'parameters': {
             'url': target,
             'maxDuration': mins}
-        }
+    }
+
 
 def get_af_spiderAjax(target, mins):
     return {
@@ -642,7 +703,8 @@ def get_af_spiderAjax(target, mins):
         'parameters': {
             'url': target,
             'maxDuration': mins}
-        }
+    }
+
 
 def get_af_report(template, dir, file, title, description):
     return {
@@ -653,7 +715,8 @@ def get_af_report(template, dir, file, title, description):
             'reportFile': file,
             'reportTitle': title,
             'reportDescription': description}
-        }
+    }
+
 
 def get_af_output_summary(format, summaryFile, config_dict, config_msg):
     obj = {
@@ -661,15 +724,17 @@ def get_af_output_summary(format, summaryFile, config_dict, config_msg):
         'parameters': {
             'format': format,
             'summaryFile': summaryFile}
-        }
+    }
     rules = []
     for id, action in config_dict.items():
         if id in config_msg:
-            rules.append({'id': int(id), 'action': action, 'customMessage': config_msg[id]})
+            rules.append({'id': int(id), 'action': action,
+                         'customMessage': config_msg[id]})
         else:
             rules.append({'id': int(id), 'action': action})
     obj['rules'] = rules
     return obj
+
 
 def get_af_alertFilter(alertFilters):
     return {
